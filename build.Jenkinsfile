@@ -17,26 +17,42 @@ void pullsource(String url,String branch = null){
 
 void buildImage(String tag){
 
-    sh "docker build -t ${tag} . "
+    sh "docker build -t ${tag}:0.1 . "
 
+}
+
+void buildCpp(){
+    def image = docker.image("yaml-cpp-builder:0.1")
+    image.inside{
+        sh """
+            mkdir build
+            cd build
+            cmake ..
+            make
+            make install
+            cat yaml-cpp.pc
+            tar -cvpf yaml-cpp-0.1.2.tar.gz *
+            mv yaml-cpp-0.1.2.tar.gz $WORKSPACE
+        """
+    }   
 }
 
 
 node('slave'){
-        stage('Pull Source Code'){
+
+        stage('Clean Workspace'){
+            deleteDir()
+        }
+        stage('Pull Own Source Code'){
                 dir('Task'){
                 pullsource("https://github.com/dirtydriver/aimo-task.git")
                 buildImage("yaml-cpp-builder")
+                }   
+        }
+          stage('Pull Yaml CPP Source Code & Build'){
+                dir('Yaml'){
+                pullsource("https://github.com/jbeder/yaml-cpp.git")
+                buildCpp()
                 }
-            
-        }
-          stage('Build Docker Image'){
-                sh 'ls -l'
-            
-        }
-        stage('Check Docker Binary'){
-                sh 'which docker'
-            
-        }
-        
+        }     
 }
